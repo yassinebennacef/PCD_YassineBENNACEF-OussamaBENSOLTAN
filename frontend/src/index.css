@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    background-color: #f4f3ef;
+    color: #111827;
+  }
+  * {
+    letter-spacing: -0.01em;
+  }
+  h1, h2, h3, h4 {
+    letter-spacing: -0.025em;
+  }
+  .font-serif, .font-display {
+    letter-spacing: -0.012em;
+  }
+}
+
+@layer components {
+  /* ── Buttons — matte, editorial, no gradients ── */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-5 py-2.5
+           bg-gray-900 text-white text-sm font-semibold rounded-lg
+           hover:bg-gray-800 active:bg-black
+           transition-colors duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-5 py-2.5
+           bg-transparent border border-gray-300 text-gray-800
+           text-sm font-semibold rounded-lg
+           hover:border-gray-900 hover:text-gray-900
+           transition-colors duration-150;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-3 py-2
+           text-gray-600 text-sm font-medium rounded-lg
+           hover:bg-gray-100 hover:text-gray-900
+           transition-colors duration-150;
+  }
+
+  /* ── Cards — flat, border-led ── */
+  .card {
+    @apply bg-white rounded-xl border border-gray-200 p-5;
+  }
+  .card-hover {
+    @apply card transition-colors duration-200 hover:border-gray-300;
+  }
+
+  /* ── Inputs ── */
+  .input {
+    @apply w-full px-3.5 py-2.5 bg-white border border-gray-200
+           rounded-lg text-sm text-gray-800 placeholder-gray-400
+           transition-colors duration-150;
+    outline: none;
+  }
+  .input:focus {
+    border-color: #111827;
+    box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.06);
+  }
+
+  /* ── Badges — small, no chunky borders ── */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded
+           text-[11px] font-medium uppercase tracking-wider;
+  }
+  .badge-blue   { @apply badge bg-blue-50    text-blue-700; }
+  .badge-green  { @apply badge bg-emerald-50 text-emerald-700; }
+  .badge-yellow { @apply badge bg-amber-50   text-amber-800; }
+  .badge-red    { @apply badge bg-rose-50    text-rose-700; }
+  .badge-purple { @apply badge bg-violet-50  text-violet-700; }
+  .badge-gray   { @apply badge bg-gray-100   text-gray-700; }
+
+  /* ── Skeleton loader ── */
+  .skeleton {
+    @apply bg-gray-200 rounded animate-pulse;
+  }
+
+  /* ── Editorial helpers ── */
+  .rule {
+    @apply border-t border-gray-200;
+  }
+  .eyebrow {
+    @apply text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold;
+  }
+}
