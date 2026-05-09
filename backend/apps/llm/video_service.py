@@ -1,11 +1,3 @@
-"""
-Simplified video generation pipeline:
-  1. DeepSeek  → script (JSON segments, max 7)
-  2. DALL-E 3  → one image per segment (standard quality, $0.04 each)
-  3. Pillow    → text overlay on each image
-  4. TTS tts-1 → audio narration per segment ($0.015/1k chars)
-  5. ffmpeg    → image + audio → clip, then concatenate all clips
-"""
 import os
 import json
 import logging
@@ -50,9 +42,9 @@ def _generate_script(title, description, excerpt, level='beginner'):
         f'Réponds UNIQUEMENT avec un JSON valide, sans texte avant ou après:\n'
         f'[{{"text":"...","image_prompt":"..."}},...]'
     )
-    raw = client.generate(prompt, max_tokens=1500)
+    raw   = client.generate(prompt, max_tokens=1500)
     start = raw.find('[')
-    end = raw.rfind(']') + 1
+    end   = raw.rfind(']') + 1
     if start == -1 or end == 0:
         raise ValueError(f'LLM did not return valid JSON array. Got: {raw[:300]}')
     return json.loads(raw[start:end])
@@ -81,7 +73,7 @@ def _generate_image(prompt, oa_client):
 def _add_text_overlay(image_path, text):
     from PIL import Image, ImageDraw, ImageFont
 
-    img = Image.open(image_path).convert('RGB')
+    img  = Image.open(image_path).convert('RGB')
     w, h = img.size
 
     font = None
@@ -101,14 +93,14 @@ def _add_text_overlay(image_path, text):
 
     lines = textwrap.wrap(text, width=54)[:4]
     line_h = 34
-    pad = 14
-    box_h = len(lines) * line_h + pad * 2
+    pad    = 14
+    box_h  = len(lines) * line_h + pad * 2
 
     overlay = Image.new('RGBA', (w, h), (0, 0, 0, 0))
     from PIL import ImageDraw as _ID
     _ID.Draw(overlay).rectangle([0, h - box_h - 10, w, h], fill=(0, 0, 0, 165))
 
-    img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
+    img  = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
     draw = ImageDraw.Draw(img)
     for i, line in enumerate(lines):
         draw.text((pad + 8, h - box_h - 10 + pad + i * line_h), line, font=font, fill='white')
@@ -120,11 +112,7 @@ def _add_text_overlay(image_path, text):
 
 
 def _generate_audio(text, oa_client):
-    resp = oa_client.audio.speech.create(
-        model='tts-1',
-        voice='nova',
-        input=text,
-    )
+    resp = oa_client.audio.speech.create(model='tts-1', voice='nova', input=text)
     f = tempfile.NamedTemporaryFile(suffix='.mp3', delete=False)
     f.write(resp.content)
     f.close()
@@ -172,33 +160,28 @@ def _run_pipeline(resource_id, level):
     from .models import GeneratedVideo
     from apps.resources.models import Resource
 
-    gv = GeneratedVideo.objects.get(resource_id=resource_id, level=level)
+    gv        = GeneratedVideo.objects.get(resource_id=resource_id, level=level)
     tmp_files = []
     try:
         resource = Resource.objects.select_related('category').get(id=resource_id)
-        excerpt = extract_text_from_resource(resource)
+        excerpt  = extract_text_from_resource(resource)
+        segments = _generate_script(resource.title, resource.description or '', excerpt, level)[:7]
 
-        segments = _generate_script(resource.title, resource.description or '', excerpt, level)
-        segments = segments[:7]
-
-        oa = _openai_client()
+        oa    = _openai_client()
         clips = []
 
         for seg in segments:
-            raw_img = _generate_image(seg.get('image_prompt', resource.title), oa)
+            raw_img     = _generate_image(seg.get('image_prompt', resource.title), oa)
             tmp_files.append(raw_img)
-
             overlay_img = _add_text_overlay(raw_img, seg['text'])
             tmp_files.append(overlay_img)
-
             audio = _generate_audio(seg['text'], oa)
             tmp_files.append(audio)
-
-            clip = _make_clip(overlay_img, audio)
+            clip  = _make_clip(overlay_img, audio)
             tmp_files.append(clip)
             clips.append(clip)
 
-        out_dir = Path(settings.MEDIA_ROOT) / 'generated_videos'
+        out_dir  = Path(settings.MEDIA_ROOT) / 'generated_videos'
         out_dir.mkdir(exist_ok=True)
         out_path = str(out_dir / f'resource_{resource_id}_{level}.mp4')
 
@@ -207,14 +190,14 @@ def _run_pipeline(resource_id, level):
         else:
             _concat_clips(clips, out_path)
 
-        gv.file = f'generated_videos/resource_{resource_id}_{level}.mp4'
+        gv.file   = f'generated_videos/resource_{resource_id}_{level}.mp4'
         gv.status = 'ready'
         gv.save()
 
     except Exception as exc:
         logger.error('Video generation failed for resource %s level %s: %s', resource_id, level, exc, exc_info=True)
         gv.status = 'failed'
-        gv.error = str(exc)[:500]
+        gv.error  = str(exc)[:500]
         gv.save()
     finally:
         for f in tmp_files:

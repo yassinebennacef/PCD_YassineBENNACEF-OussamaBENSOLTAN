@@ -1,7 +1,3 @@
-"""
-French prompt templates for the PILearn LLM module.
-"""
-
 LEVEL_LABELS = {
     'beginner':     'débutant',
     'intermediate': 'intermédiaire',
@@ -10,11 +6,8 @@ LEVEL_LABELS = {
 
 
 def summarize_prompt(title: str, description: str, level: str, content_excerpt: str = '') -> str:
-    """Short inline summary — used inside the app UI."""
-    level_label = LEVEL_LABELS.get(level, level)
-    content_section = (
-        f'\n\nExtrait du contenu :\n{content_excerpt[:1500]}' if content_excerpt else ''
-    )
+    level_label     = LEVEL_LABELS.get(level, level)
+    content_section = f'\n\nExtrait du contenu :\n{content_excerpt[:1500]}' if content_excerpt else ''
     return (
         f"Tu es un assistant pédagogique. Génère un résumé clair de la ressource éducative "
         f"suivante pour un étudiant de niveau {level_label}.\n\n"
@@ -31,15 +24,12 @@ def detailed_summary_prompt(
     title: str, description: str, level: str,
     category: str = '', content_excerpt: str = '', resource_format: str = '',
 ) -> str:
-    """Comprehensive structured study sheet — used for PDF export."""
-    level_label = LEVEL_LABELS.get(level, level)
-    format_note = (
+    level_label     = LEVEL_LABELS.get(level, level)
+    format_note     = (
         " (ressource vidéo : basez-vous sur le titre, la description et votre connaissance du domaine)"
         if resource_format == 'video' else ''
     )
-    content_section = (
-        f'\n\nExtrait du contenu :\n{content_excerpt[:2500]}' if content_excerpt else ''
-    )
+    content_section = f'\n\nExtrait du contenu :\n{content_excerpt[:2500]}' if content_excerpt else ''
     return (
         f"Tu es un expert pédagogique. Génère une fiche de révision complète et structurée "
         f"pour la ressource suivante.{format_note} "
@@ -65,17 +55,13 @@ def detailed_summary_prompt(
 
 
 def simplify_prompt(
-    title: str,
-    description: str,
-    current_level: str,
-    target_level: str,
+    title: str, description: str,
+    current_level: str, target_level: str,
     content_excerpt: str = '',
 ) -> str:
-    current_label = LEVEL_LABELS.get(current_level, current_level)
-    target_label = LEVEL_LABELS.get(target_level, target_level)
-    content_section = (
-        f'\n\nExtrait du contenu :\n{content_excerpt[:1500]}' if content_excerpt else ''
-    )
+    current_label   = LEVEL_LABELS.get(current_level, current_level)
+    target_label    = LEVEL_LABELS.get(target_level, target_level)
+    content_section = f'\n\nExtrait du contenu :\n{content_excerpt[:1500]}' if content_excerpt else ''
     return (
         f"Tu es un assistant pédagogique spécialisé dans l'adaptation de contenus éducatifs. "
         f"La ressource suivante est de niveau {current_label}. "
@@ -105,23 +91,13 @@ def variants_prompt(title: str, description: str, level: str, category: str) -> 
         f"1. Le style d'apprentissage ciblé (visuel, auditif, kinesthésique, lecture/écriture)\n"
         f"2. L'approche pédagogique recommandée\n"
         f"3. Une activité ou exercice concret à proposer\n\n"
-        f"Format de réponse :\n"
-        f"Variante 1 — [Style] :\n"
-        f"...\n\n"
-        f"Variante 2 — [Style] :\n"
-        f"...\n\n"
-        f"Variante 3 — [Style] :\n"
-        f"..."
+        f"Variante 1 — [Style] :\n...\n\nVariante 2 — [Style] :\n...\n\nVariante 3 — [Style] :\n..."
     )
 
 
 def learning_path_prompt(
-    username: str,
-    level: str,
-    field: str,
-    goals: str,
-    completed_titles: list,
-    available_resources: list,
+    username: str, level: str, field: str, goals: str,
+    completed_titles: list, available_resources: list,
 ) -> str:
     level_label = LEVEL_LABELS.get(level, level)
 
@@ -129,7 +105,6 @@ def learning_path_prompt(
         '\n'.join(f'  - {t}' for t in completed_titles[:10])
         if completed_titles else '  Aucune'
     )
-
     resources_str = '\n'.join(
         f"  [{i + 1}] {r['title']} "
         f"(niveau: {LEVEL_LABELS.get(r['level'], r['level'])}, "

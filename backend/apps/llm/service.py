@@ -1,8 +1,3 @@
-"""
-LLM service — orchestrates text extraction, prompt building, LLM calls, and DB caching.
-Cached responses are reused on subsequent requests to keep the Raspberry Pi responsive.
-"""
-
 import hashlib
 import logging
 
@@ -24,8 +19,6 @@ from .prompts import (
 logger = logging.getLogger(__name__)
 
 
-# ─── Cache helpers ────────────────────────────────────────────────────────────
-
 def _cache_key(*parts) -> str:
     raw = '|'.join(str(p) for p in parts)
     return hashlib.sha256(raw.encode()).hexdigest()[:64]
@@ -39,7 +32,7 @@ def _from_cache(key: str):
 def _to_cache(key, task_type, text, provider, resource=None, level=''):
     from .models import LLMCache
     with transaction.atomic():
-        obj, _ = LLMCache.objects.get_or_create(
+        LLMCache.objects.get_or_create(
             cache_key=key,
             defaults={
                 'task_type':     task_type,
@@ -49,14 +42,11 @@ def _to_cache(key, task_type, text, provider, resource=None, level=''):
                 'provider':      provider,
             },
         )
-    return obj
 
 
 def _cached_result(cached):
     return {'text': cached.response_text, 'cached': True, 'provider': cached.provider}
 
-
-# ─── Public service functions ─────────────────────────────────────────────────
 
 def summarize(resource: Resource, level: str) -> dict:
     key = _cache_key('summary', resource.id, level)
@@ -65,21 +55,20 @@ def summarize(resource: Resource, level: str) -> dict:
         return _cached_result(cached)
 
     excerpt = extract_text_from_resource(resource)
-    prompt = summarize_prompt(resource.title, resource.description, level, excerpt)
-    client = get_llm_client()
-    text = client.generate(prompt)
+    prompt  = summarize_prompt(resource.title, resource.description, level, excerpt)
+    client  = get_llm_client()
+    text    = client.generate(prompt)
     _to_cache(key, 'summary', text, client.provider_name, resource=resource, level=level)
     return {'text': text, 'cached': False, 'provider': client.provider_name}
 
 
 def detailed_summarize(resource: Resource, level: str) -> dict:
-    """Comprehensive structured summary for PDF export — larger token budget."""
     key = _cache_key('detailed_summary', resource.id, level)
     cached = _from_cache(key)
     if cached:
         return _cached_result(cached)
 
-    excerpt = extract_text_from_resource(resource)
+    excerpt       = extract_text_from_resource(resource)
     category_name = resource.category.name if resource.category else ''
     prompt = detailed_summary_prompt(
         title=resource.title,
@@ -90,7 +79,7 @@ def detailed_summarize(resource: Resource, level: str) -> dict:
         resource_format=resource.format,
     )
     client = get_llm_client()
-    text = client.generate(prompt, max_tokens=2000)
+    text   = client.generate(prompt, max_tokens=2000)
     _to_cache(key, 'summary', text, client.provider_name, resource=resource, level=level)
     return {'text': text, 'cached': False, 'provider': client.provider_name}
 
@@ -102,12 +91,12 @@ def simplify(resource: Resource, target_level: str) -> dict:
         return _cached_result(cached)
 
     excerpt = extract_text_from_resource(resource)
-    prompt = simplify_prompt(
+    prompt  = simplify_prompt(
         resource.title, resource.description,
         resource.level, target_level, excerpt,
     )
     client = get_llm_client()
-    text = client.generate(prompt)
+    text   = client.generate(prompt)
     _to_cache(key, 'simplify', text, client.provider_name, resource=resource, level=target_level)
     return {'text': text, 'cached': False, 'provider': client.provider_name}
 
@@ -121,7 +110,7 @@ def get_variants(resource: Resource) -> dict:
     category_name = resource.category.name if resource.category else ''
     prompt = variants_prompt(resource.title, resource.description, resource.level, category_name)
     client = get_llm_client()
-    text = client.generate(prompt)
+    text   = client.generate(prompt)
     _to_cache(key, 'variants', text, client.provider_name, resource=resource)
     return {'text': text, 'cached': False, 'provider': client.provider_name}
 
@@ -190,6 +179,6 @@ def generate_learning_path(user) -> dict:
         available_resources=available,
     )
     client = get_llm_client()
-    text = client.generate(prompt)
+    text   = client.generate(prompt)
     _to_cache(key, 'learning_path', text, client.provider_name, level=profile.level)
     return {'text': text, 'cached': False, 'provider': client.provider_name}

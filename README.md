@@ -65,39 +65,61 @@ project/
 
 ### 1 — Backend
 
+**Linux / macOS**
 ```bash
 cd backend
-
-# Create and activate virtual environment
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate
 pip install -r requirements.txt
-
-# Configure environment
 cp .env.example .env
-# Edit .env if needed (defaults work for local dev with Ollama)
-
-# Apply migrations and build the Whoosh index
 python manage.py migrate
-python manage.py rebuild_index
-
-# (Optional) load sample data
-python manage.py seed_data
-
-# Start the development server
+python manage.py seed_data      # optional — loads sample data
 python manage.py runserver
-# → API available at http://localhost:8000
+# API available at http://localhost:8000
 ```
 
+**Windows (PowerShell)**
+```powershell
+cd backend
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+copy .env.example .env
+python manage.py migrate
+python manage.py seed_data      # optional — loads sample data
+python manage.py runserver
+# API available at http://localhost:8000
+```
+
+> **Note:** The `.env.example` file is pre-configured for local development.
+> Copying it to `.env` is all that is needed — no manual editing required.
+
 ### 2 — Frontend
+
+If you don't have Node.js installed, run this first:
+
+**Windows (winget)**
+```powershell
+winget install OpenJS.NodeJS.LTS
+```
+
+**Linux (apt)**
+```bash
+sudo apt install nodejs npm
+```
+
+**macOS (Homebrew)**
+```bash
+brew install node
+```
+
+Then start the frontend:
 
 ```bash
 cd frontend
 npm install
 npm run dev
-# → UI available at http://localhost:5173
+# UI available at http://localhost:5173
 ```
 
 ### 3 — LLM (optional — required only for AI features)

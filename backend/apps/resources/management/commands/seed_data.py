@@ -1,7 +1,3 @@
-"""
-Usage: python manage.py seed_data [--clear]
-Populates the database with initial categories and sample resources.
-"""
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from apps.resources.models import Category, Resource
@@ -237,9 +233,9 @@ class Command(BaseCommand):
             }
         )
         if created:
-            teacher.set_password('admin1234')
+            teacher.set_password('learnly2026')
             teacher.save()
-            self.stdout.write('Created admin user: admin_pilearn / admin1234')
+            self.stdout.write('Created admin user: admin_pilearn')
 
         cat_map = {}
         for c in CATEGORIES:

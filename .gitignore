@@ -1,42 +1,42 @@
-# ── Python ──────────────────────────────────────────────────────────────────
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 .Python
 
-# ── Virtual environment ──────────────────────────────────────────────────────
+# Virtual environment
 backend/venv/
 venv/
 env/
 
-# ── Django runtime files ─────────────────────────────────────────────────────
+# Django runtime files
 backend/db.sqlite3
 backend/media/
 backend/staticfiles/
 backend/whoosh_index/
 
-# ── Environment / secrets — NEVER commit the real .env ───────────────────────
+# Environment / secrets
 .env
 *.env
 !.env.example
 !backend/.env.example
 
-# ── Node / Frontend ──────────────────────────────────────────────────────────
+# Node / Frontend
 frontend/node_modules/
 frontend/dist/
 frontend/.cache/
 
-# ── Claude Code IDE config ───────────────────────────────────────────────────
+# IDE
 .claude/
+.idea/
+.vscode/
 
-# ── OS & editor noise ────────────────────────────────────────────────────────
+# OS
 .DS_Store
 Thumbs.db
 *.swp
 *.swo
-.idea/
-.vscode/
 
-# ── Generated diagram script (local tooling, not part of the app) ────────────
+# Local tooling
 generate_diagrams.py

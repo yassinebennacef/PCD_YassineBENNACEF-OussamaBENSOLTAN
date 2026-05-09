@@ -1,18 +1,15 @@
-"""
-Learnly API Benchmark — runs on dev machine, prints real response times.
-Usage: python benchmark.py
-Requires: pip install requests
-"""
+import os
 import requests
 import time
 import statistics
 
-BASE = "http://127.0.0.1:8000/api"
+BASE     = "http://127.0.0.1:8000/api"
+EMAIL    = os.environ.get('BENCHMARK_EMAIL', '')
+PASSWORD = os.environ.get('BENCHMARK_PASSWORD', '')
 
-# ── Config — change these if needed ─────────────────────────
-EMAIL    = "admin@pilearn.local"
-PASSWORD = "admin123"
-# ────────────────────────────────────────────────────────────
+if not EMAIL or not PASSWORD:
+    print("Set BENCHMARK_EMAIL and BENCHMARK_PASSWORD environment variables before running.")
+    exit(1)
 
 def ms(seconds):
     return round(seconds * 1000)
@@ -37,7 +34,6 @@ print("\n" + "="*72)
 print("  LEARNLY API BENCHMARK — Development Machine")
 print("="*72)
 
-# ── 1. Login ─────────────────────────────────────────────────
 print("\n[1] Authentication")
 login_resp = requests.post(f"{BASE}/auth/login/", json={"email": EMAIL, "password": PASSWORD})
 if login_resp.status_code != 200:
@@ -57,7 +53,6 @@ print(f"  ✓ Logged in — got access token")
 login_time, _ = measure("POST /auth/login/", lambda: requests.post(
     f"{BASE}/auth/login/", json={"email": EMAIL, "password": PASSWORD}))
 
-# ── 2. Resources ─────────────────────────────────────────────
 print("\n[2] Resources")
 measure("GET /resources/ (list, page 1)",
         lambda: requests.get(f"{BASE}/resources/", headers=headers))
@@ -78,7 +73,6 @@ resource_id = items[0]["id"] if items else 1
 measure(f"GET /resources/{resource_id}/ (detail)",
         lambda: requests.get(f"{BASE}/resources/{resource_id}/", headers=headers))
 
-# ── 3. Search ────────────────────────────────────────────────
 print("\n[3] Search")
 measure("GET /resources/search/?q=python",
         lambda: requests.get(f"{BASE}/resources/search/", params={"q": "python"}, headers=headers))
@@ -89,7 +83,6 @@ measure("GET /resources/search/?q=machine+learning",
 measure("GET /resources/suggest/?q=py",
         lambda: requests.get(f"{BASE}/resources/suggest/", params={"q": "py"}, headers=headers))
 
-# ── 4. Recommendations (cold then warm) ──────────────────────
 print("\n[4] Recommendations")
 # cold: first hit
 t0 = time.perf_counter()
@@ -104,7 +97,6 @@ measure("GET /recommendations/sections/ (warm)",
 measure("GET /recommendations/ (flat list)",
         lambda: requests.get(f"{BASE}/recommendations/", headers=headers))
 
-# ── 5. Context ───────────────────────────────────────────────
 print("\n[5] Context")
 measure("POST /context/network/ (log bandwidth)",
         lambda: requests.post(f"{BASE}/context/network/",
@@ -114,7 +106,6 @@ measure("POST /context/network/ (log bandwidth)",
 measure("POST /context/zone/ (update zone)",
         lambda: requests.post(f"{BASE}/context/zone/", json={"zone": "library"}, headers=headers))
 
-# ── 6. Auth (profile, progress, bookmarks) ───────────────────
 print("\n[6] Auth / Profile")
 measure("GET /auth/me/",
         lambda: requests.get(f"{BASE}/auth/me/", headers=headers))
@@ -134,7 +125,6 @@ measure(f"POST /auth/bookmark/{resource_id}/ (toggle)",
 measure(f"POST /auth/complete/{resource_id}/ (toggle)",
         lambda: requests.post(f"{BASE}/auth/complete/{resource_id}/", headers=headers))
 
-# ── 7. Feedback ──────────────────────────────────────────────
 print("\n[7] Feedback")
 measure(f"GET /feedback/comments/{resource_id}/",
         lambda: requests.get(f"{BASE}/feedback/comments/{resource_id}/", headers=headers))
@@ -142,7 +132,6 @@ measure(f"GET /feedback/comments/{resource_id}/",
 measure(f"POST /feedback/rate/{resource_id}/ (score=4)",
         lambda: requests.post(f"{BASE}/feedback/rate/{resource_id}/", json={"score": 4}, headers=headers))
 
-# ── 8. Dashboard ─────────────────────────────────────────────
 print("\n[8] Dashboard")
 measure("GET /dashboard/overview/",
         lambda: requests.get(f"{BASE}/dashboard/overview/", headers=headers))
@@ -156,7 +145,6 @@ measure("GET /dashboard/resources/",
 measure("GET /dashboard/network/",
         lambda: requests.get(f"{BASE}/dashboard/network/", headers=headers))
 
-# ── 9. Token refresh ─────────────────────────────────────────
 print("\n[9] Token Refresh")
 measure("POST /auth/token/refresh/",
         lambda: requests.post(f"{BASE}/auth/token/refresh/", json={"refresh": refresh}))

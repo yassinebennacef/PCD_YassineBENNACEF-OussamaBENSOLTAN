@@ -1,12 +1,3 @@
-"""
-Module 8 — Admin Dashboard
-Provides all statistics needed for Chart.js visualisations:
-  - Usage stats (resource views, downloads by day/week)
-  - Student profile distribution (levels, fields)
-  - Network quality monitoring
-  - Recommendation engine performance
-"""
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -27,21 +18,19 @@ class IsAdmin(IsAuthenticated):
         return super().has_permission(request, view) and request.user.role == 'admin'
 
 
-# ─── Overview KPIs ────────────────────────────────────────────────────────────
-
 class DashboardOverviewView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        now = timezone.now()
+        now     = timezone.now()
         last_30 = now - timedelta(days=30)
         last_7  = now - timedelta(days=7)
 
         return Response({
             'users': {
-                'total':    User.objects.count(),
-                'students': User.objects.filter(role='student').count(),
-                'teachers': User.objects.filter(role='teacher').count(),
+                'total':          User.objects.count(),
+                'students':       User.objects.filter(role='student').count(),
+                'teachers':       User.objects.filter(role='teacher').count(),
                 'new_last_7_days': User.objects.filter(date_joined__gte=last_7).count(),
             },
             'resources': {
@@ -58,34 +47,29 @@ class DashboardOverviewView(APIView):
                 ),
             },
             'interactions': {
-                'total_last_30_days': UserInteraction.objects.filter(
-                    timestamp__gte=last_30
-                ).count(),
+                'total_last_30_days': UserInteraction.objects.filter(timestamp__gte=last_30).count(),
                 'by_type': list(
                     UserInteraction.objects.filter(timestamp__gte=last_30)
                     .values('event_type').annotate(count=Count('id'))
                 ),
             },
             'feedback': {
-                'total_ratings':  Rating.objects.count(),
-                'avg_rating':     Rating.objects.aggregate(avg=Avg('score'))['avg'] or 0,
-                'total_comments': Comment.objects.count(),
+                'total_ratings':      Rating.objects.count(),
+                'avg_rating':         Rating.objects.aggregate(avg=Avg('score'))['avg'] or 0,
+                'total_comments':     Comment.objects.count(),
                 'suggestions_pending': ContentSuggestion.objects.filter(is_reviewed=False).count(),
             },
         })
 
 
-# ─── Usage Over Time (line chart) ─────────────────────────────────────────────
-
 class UsageTimelineView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        days = int(request.query_params.get('days', 30))
-        since = timezone.now() - timedelta(days=days)
+        days        = int(request.query_params.get('days', 30))
+        since       = timezone.now() - timedelta(days=days)
         granularity = request.query_params.get('granularity', 'day')
-
-        trunc_fn = TruncDay if granularity == 'day' else TruncWeek
+        trunc_fn    = TruncDay if granularity == 'day' else TruncWeek
 
         data = (
             UserInteraction.objects
@@ -95,11 +79,8 @@ class UsageTimelineView(APIView):
             .annotate(count=Count('id'))
             .order_by('period')
         )
-
         return Response(list(data))
 
-
-# ─── Student Profiles Analysis (pie / bar charts) ─────────────────────────────
 
 class StudentProfileStatsView(APIView):
     permission_classes = [IsAdmin]
@@ -107,22 +88,12 @@ class StudentProfileStatsView(APIView):
     def get(self, request):
         profiles = StudentProfile.objects.select_related('user').all()
 
-        level_dist = list(profiles.values('level').annotate(count=Count('id')))
-        language_dist = list(profiles.values('preferred_language').annotate(count=Count('id')))
-        field_dist = list(
-            profiles.exclude(field_of_study='')
-            .values('field_of_study').annotate(count=Count('id')).order_by('-count')[:10]
-        )
-
-        # Top students by time spent
         top_students = list(
             profiles.order_by('-total_time_spent').values(
                 'user__username', 'user__first_name', 'user__last_name',
                 'level', 'total_time_spent'
             )[:10]
         )
-
-        # Progress completion rates
         completion = (
             LearningProgress.objects
             .values('student__student_profile__level')
@@ -130,101 +101,75 @@ class StudentProfileStatsView(APIView):
         )
 
         return Response({
-            'level_distribution': level_dist,
-            'language_distribution': language_dist,
-            'field_distribution': field_dist,
-            'top_students_by_time': top_students,
-            'completion_by_level': list(completion),
+            'level_distribution':    list(profiles.values('level').annotate(count=Count('id'))),
+            'language_distribution': list(profiles.values('preferred_language').annotate(count=Count('id'))),
+            'field_distribution':    list(profiles.exclude(field_of_study='').values('field_of_study').annotate(count=Count('id')).order_by('-count')[:10]),
+            'top_students_by_time':  top_students,
+            'completion_by_level':   list(completion),
         })
 
-
-# ─── Resource Performance (bar + table) ───────────────────────────────────────
 
 class ResourceStatsView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        # Top viewed
-        top_viewed = list(
-            Resource.objects.filter(is_active=True, is_validated=True)
-            .order_by('-view_count')
-            .values('id', 'title', 'view_count', 'download_count',
-                    'average_rating', 'format', 'level')[:15]
-        )
+        base = Resource.objects.filter(is_active=True, is_validated=True)
 
-        # Top rated
+        top_viewed = list(
+            base.order_by('-view_count')
+            .values('id', 'title', 'view_count', 'download_count', 'average_rating', 'format', 'level')[:15]
+        )
         top_rated = list(
-            Resource.objects.filter(is_active=True, is_validated=True, rating_count__gte=3)
-            .order_by('-average_rating')
+            base.filter(rating_count__gte=3).order_by('-average_rating')
             .values('id', 'title', 'average_rating', 'rating_count', 'format')[:10]
         )
-
-        # Category breakdown
         by_category = list(
             Category.objects.annotate(
-                resource_count=Count('resources', filter=Q(
-                    resources__is_active=True, resources__is_validated=True
-                )),
+                resource_count=Count('resources', filter=Q(resources__is_active=True, resources__is_validated=True)),
                 total_views=Sum('resources__view_count'),
             ).values('name', 'resource_count', 'total_views')
         )
-
-        # Pending validation
         pending = list(
             Resource.objects.filter(is_active=True, is_validated=False)
             .select_related('uploaded_by', 'category')
-            .values('id', 'title', 'format', 'level',
-                    'uploaded_by__username', 'created_at')[:20]
+            .values('id', 'title', 'format', 'level', 'uploaded_by__username', 'created_at')[:20]
         )
 
         return Response({
-            'top_viewed': top_viewed,
-            'top_rated': top_rated,
-            'by_category': by_category,
+            'top_viewed':         top_viewed,
+            'top_rated':          top_rated,
+            'by_category':        by_category,
             'pending_validation': pending,
         })
 
-
-# ─── Network Monitoring ───────────────────────────────────────────────────────
 
 class NetworkMonitorView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
         since = timezone.now() - timedelta(hours=24)
-        logs = (
+
+        timeline = (
             NetworkQualityLog.objects
             .filter(timestamp__gte=since)
             .annotate(period=TruncDay('timestamp'))
             .values('period', 'location_hint')
-            .annotate(
-                avg_download=Avg('download_kbps'),
-                avg_latency=Avg('latency_ms'),
-                sample_count=Count('id'),
-            )
+            .annotate(avg_download=Avg('download_kbps'), avg_latency=Avg('latency_ms'), sample_count=Count('id'))
             .order_by('period')
         )
-
-        # Current snapshot
-        latest = (
-            NetworkQualityLog.objects
-            .filter(timestamp__gte=since)
-            .aggregate(
-                avg_download=Avg('download_kbps'),
-                avg_latency=Avg('latency_ms'),
-                total_samples=Count('id'),
-            )
+        summary = NetworkQualityLog.objects.filter(timestamp__gte=since).aggregate(
+            avg_download=Avg('download_kbps'),
+            avg_latency=Avg('latency_ms'),
+            total_samples=Count('id'),
         )
 
-        return Response({'timeline': list(logs), 'summary': latest})
+        return Response({'timeline': list(timeline), 'summary': summary})
 
-
-# ─── URLs ─────────────────────────────────────────────────────────────────────
 
 urlpatterns = [
-    path('overview/', DashboardOverviewView.as_view(), name='dashboard_overview'),
-    path('usage/', UsageTimelineView.as_view(), name='dashboard_usage'),
-    path('students/', StudentProfileStatsView.as_view(), name='dashboard_students'),
-    path('resources/', ResourceStatsView.as_view(), name='dashboard_resources'),
-    path('network/', NetworkMonitorView.as_view(), name='dashboard_network'),
+    path('overview/',  DashboardOverviewView.as_view(),    name='dashboard_overview'),
+    path('usage/',     UsageTimelineView.as_view(),        name='dashboard_usage'),
+    path('students/',  StudentProfileStatsView.as_view(),  name='dashboard_students'),
+    path('resources/', ResourceStatsView.as_view(),        name='dashboard_resources'),
+    path('network/',   NetworkMonitorView.as_view(),       name='dashboard_network'),
 ]
