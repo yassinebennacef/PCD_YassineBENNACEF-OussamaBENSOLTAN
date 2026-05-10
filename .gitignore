@@ -28,7 +28,6 @@ frontend/dist/
 frontend/.cache/
 
 # IDE
-.claude/
 .idea/
 .vscode/
 
